@@ -45,12 +45,10 @@ class Manager:
         for idx, transfer in enumerate(self.transfers):
             transfer_errors: List[str] = []
 
-            # Check tenant assignment
             if transfer.tenant not in self.tenants:
                 transfer_errors.append('unassigned_tenant')
             else:
                 tenant = self.tenants[transfer.tenant]
-                # If settlement year/month are provided, verify they fall within tenant agreement
                 if transfer.settlement_year is not None and transfer.settlement_month is not None:
                     try:
                         start = datetime.strptime(tenant.date_agreement_from, "%Y-%m-%d")

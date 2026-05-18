@@ -2,7 +2,7 @@ import pytest
 
 from pydantic import ValidationError
 from src.manager import Manager
-from src.models import Apartment, BlacklistedTenant, Parameters, Tenant
+from src.models import Apartment, BlacklistedTenant, Parameters, Tenant, Transfer
 
 
 def test_apartment_fields():
@@ -41,7 +41,7 @@ def test_apartment_from_dict():
     assert apartment.area_m2 == data["area_m2"]
     assert len(apartment.rooms) == len(data["rooms"])
 
-    data['area_m2'] = "25m2" # Invalid field
+    data['area_m2'] = "25m2"
     with pytest.raises(ValidationError):
         wrong_apartment = Apartment(**data)
 
@@ -82,7 +82,7 @@ def test_tenant_from_dict():
     assert tenant.rent_pln == data["rent_pln"]
 
     with pytest.raises(ValidationError):
-        data['rent_pln'] = "1500PLN" # Invalid field
+        data['rent_pln'] = "1500PLN"
         wrong_tenant = Tenant(**data)
 
 
@@ -102,3 +102,39 @@ def test_tenant_blacklist_manager():
 
     assert manager.is_tenant_blacklisted("Zly Najemca") is True
     assert manager.is_tenant_blacklisted("Jan Nowak") is False
+
+
+def test_transfer_unassigned_tenant_detection():
+    manager = Manager(Parameters())
+    # replace transfers with a transfer referencing a non-existent tenant
+    manager.transfers = [
+        Transfer(
+            amount_pln=100.0,
+            date='2025-01-01',
+            settlement_year=2025,
+            settlement_month=1,
+            tenant='non-existent-tenant'
+        )
+    ]
+
+    errors = manager.get_transfer_errors()
+    assert len(errors) == 1
+    assert 'unassigned_tenant' in errors[0]['errors']
+
+
+def test_transfer_settlement_outside_agreement_detection():
+    manager = Manager(Parameters())
+    # tenant-1 in data has agreement in 2024; create transfer for 2025
+    manager.transfers = [
+        Transfer(
+            amount_pln=200.0,
+            date='2025-01-01',
+            settlement_year=2025,
+            settlement_month=1,
+            tenant='tenant-1'
+        )
+    ]
+
+    errors = manager.get_transfer_errors()
+    assert len(errors) == 1
+    assert 'settlement_outside_agreement' in errors[0]['errors']
