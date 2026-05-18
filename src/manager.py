@@ -1,5 +1,6 @@
 from src.models import Apartment, Bill, Parameters, Tenant, TenantSettlement, Transfer, ApartmentSettlement, BlacklistedTenant
 from typing import List, Tuple
+from datetime import datetime
 
 class Manager:
     def __init__(self, parameters: Parameters):
@@ -31,6 +32,47 @@ class Manager:
 
     def is_tenant_blacklisted(self, tenant_name: str) -> bool:
         return any(blacklisted.name == tenant_name for blacklisted in self.blacklisted_tenants.values())
+
+    def get_transfer_errors(self) -> List[dict]:
+        """Return list of transfer errors. Each item is a dict with keys: index, transfer, errors.
+
+        Errors detected:
+        - 'unassigned_tenant': transfer.tenant not present in `self.tenants`
+        - 'settlement_outside_agreement': transfer settlement year/month outside tenant agreement range
+        - 'tenant_dates_parse_error': tenant agreement dates could not be parsed
+        """
+        errors = []
+        for idx, transfer in enumerate(self.transfers):
+            transfer_errors: List[str] = []
+
+            # Check tenant assignment
+            if transfer.tenant not in self.tenants:
+                transfer_errors.append('unassigned_tenant')
+            else:
+                tenant = self.tenants[transfer.tenant]
+                # If settlement year/month are provided, verify they fall within tenant agreement
+                if transfer.settlement_year is not None and transfer.settlement_month is not None:
+                    try:
+                        start = datetime.strptime(tenant.date_agreement_from, "%Y-%m-%d")
+                        end = datetime.strptime(tenant.date_agreement_to, "%Y-%m-%d")
+                        trans_dt = datetime(transfer.settlement_year, transfer.settlement_month, 1)
+                        if trans_dt < start or trans_dt > end:
+                            transfer_errors.append('settlement_outside_agreement')
+                    except Exception:
+                        transfer_errors.append('tenant_dates_parse_error')
+
+            if transfer_errors:
+                errors.append({
+                    'index': idx,
+                    'transfer': transfer,
+                    'errors': transfer_errors
+                })
+
+        return errors
+
+    def has_transfer_errors(self) -> bool:
+        """Convenience method: True if any transfer errors detected."""
+        return len(self.get_transfer_errors()) > 0
 
     def get_apartment_costs(self, apartment_key: str, year: int = None, month: int = None) -> float | None:
         if month is not None and (month < 1 or month > 12):
