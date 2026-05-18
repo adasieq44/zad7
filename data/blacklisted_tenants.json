@@ -1,0 +1,10 @@
+{
+    "blacklisted-1": {
+        "name": "Zly Najemca",
+        "reason": "Brak terminowych płatności"
+    },
+    "blacklisted-2": {
+        "name": "Inny Najemca",
+        "reason": "Naruszanie zasad użytkowania"
+    }
+}

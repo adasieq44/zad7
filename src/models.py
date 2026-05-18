@@ -9,6 +9,7 @@ class Parameters(BaseModel):
     tenants_json_path: str = 'data/tenants.json'
     transfers_json_path: str = 'data/transfers.json'
     bills_json_path: str = 'data/bills.json'
+    blacklisted_tenants_json_path: str = 'data/blacklisted_tenants.json'
 
 
 class Room(BaseModel):
@@ -49,6 +50,20 @@ class Tenant(BaseModel):
         assert isinstance(data, dict), "Expected a dictionary of tenants"
         return {key: Tenant(**tenant) for key, tenant in data.items()}
     
+
+
+class BlacklistedTenant(BaseModel):
+    name: str
+    reason: str
+
+    @staticmethod
+    def from_json_file(file_path: str) -> Dict[str,'BlacklistedTenant']:
+        data = None
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+        assert isinstance(data, dict), "Expected a dictionary of blacklisted tenants"
+        return {key: BlacklistedTenant(**tenant) for key, tenant in data.items()}
+
 
 class Transfer(BaseModel):
     amount_pln: float
