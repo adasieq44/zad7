@@ -1,7 +1,8 @@
 import pytest
 
 from pydantic import ValidationError
-from src.models import Apartment, Tenant
+from src.manager import Manager
+from src.models import Apartment, BlacklistedTenant, Parameters, Tenant
 
 
 def test_apartment_fields():
@@ -49,7 +50,6 @@ def test_tenant_fields():
         name='Test Tenant',
         apartment='apart-test',
         room='test-room',
-        apartment_key='apart-test',
         rent_pln=1500.0,
         deposit_pln=3000.0,
         date_agreement_from='2024-01-01',
@@ -84,3 +84,21 @@ def test_tenant_from_dict():
     with pytest.raises(ValidationError):
         data['rent_pln'] = "1500PLN" # Invalid field
         wrong_tenant = Tenant(**data)
+
+
+def test_blacklisted_tenant_fields():
+    data = {
+        "name": "Zly Najemca",
+        "reason": "Brak terminowych płatności"
+    }
+    blacklisted_tenant = BlacklistedTenant(**data)
+
+    assert blacklisted_tenant.name == data["name"]
+    assert blacklisted_tenant.reason == data["reason"]
+
+
+def test_tenant_blacklist_manager():
+    manager = Manager(Parameters())
+
+    assert manager.is_tenant_blacklisted("Zly Najemca") is True
+    assert manager.is_tenant_blacklisted("Jan Nowak") is False
